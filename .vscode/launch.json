@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "App",
+            "request": "launch",
+            "mainClass": "App",
+            "projectName": "projet"
+        },
+        {
+            "type": "java",
             "name": "Run Setup",
             "request": "launch",
             "mainClass": "Setup",
