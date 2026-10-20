@@ -1,5 +1,9 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +27,7 @@ public class App {
             System.out.println("1. Enregistrer une vente");
             System.out.println("2. Afficher les produits en rupture de stock");
             System.out.println("3. Afficher les produits les plus vendus");
+            System.out.println("4. Calculer le chiffre d'affaires sur une période");
             System.out.print("Votre choix : ");
             int choix = scanner.nextInt();
             scanner.nextLine();
@@ -36,6 +41,9 @@ public class App {
                     break;
                 case 3:
                     afficherProduitsLesPlusVendus(scanner);
+                    break;
+                case 4:
+                    calculerChiffreAffaires(scanner);
                     break;
                 default:
                     System.out.println("Choix invalide.");
@@ -136,6 +144,57 @@ public class App {
                 System.out.println("Aucun produit vendu.");
             }
         }
+    }
+
+    /**
+     * Calcule le chiffre d'affaires entre deux dates
+     */
+    public static void calculerChiffreAffaires(Scanner scanner) {
+        // set le format de date pour le parse
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("dd-MM-uuuu").withResolverStyle(ResolverStyle.STRICT);
+
+        LocalDate debut;
+        LocalDate fin;
+
+        try {
+            System.out.print("Date de début (merci de respecter le format jj-MM-aaaa) : ");
+            debut = LocalDate.parse(scanner.nextLine().trim(), format);
+            System.out.print("Date de fin (merci de respecter le format jj-MM-aaaa) : ");
+            fin = LocalDate.parse(scanner.nextLine().trim(), format);
+        } catch (DateTimeParseException e) {
+            System.out.println("Format non respecté.");
+            return;
+        }
+
+        if(debut.isAfter(fin)) {
+            System.out.println("Erreur : date de début après date de fin.");
+            return;
+        }
+
+        // Calcul le CA
+        BigDecimal chiffreAffaires = BigDecimal.ZERO;
+        try (MongoClient mongoClient = MongoClients.create()) {
+            MongoDatabase database = mongoClient.getDatabase("projet");
+
+            try (var cursor = database.getCollection("ventes").find().iterator()) {
+                while(cursor.hasNext()) {
+                    Document vente = cursor.next();
+                    // parse la date de la vente
+                    LocalDate date = LocalDate.parse(vente.getString("Order Date"), format);
+
+                    // regarde si elle est incluse dans la range qu'on veut regarder
+                    if(!date.isBefore(debut) && !date.isAfter(fin)) {
+                        for (Document item : vente.getList("items", Document.class)) {
+                            // ajoute le sales de chaque item à la somme du CA
+                            chiffreAffaires = chiffreAffaires.add(new BigDecimal(item.get("Sales").toString()));
+                        }
+                    }
+                }
+            }
+        }
+
+        // print le CA =
+        System.out.println("Chiffre d'affaires : " + chiffreAffaires);
     }
 
     /**
