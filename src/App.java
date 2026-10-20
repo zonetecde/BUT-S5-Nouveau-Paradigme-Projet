@@ -1,6 +1,9 @@
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
 import org.bson.Document;
@@ -18,6 +21,8 @@ public class App {
         try (Scanner scanner = new Scanner(System.in)) {
             System.out.println("=== EPOSSIBLE ===");
             System.out.println("1. Enregistrer une vente");
+            System.out.println("2. Afficher les produits en rupture de stock");
+            System.out.println("3. Afficher les produits les plus vendus");
             System.out.print("Votre choix : ");
             int choix = scanner.nextInt();
             scanner.nextLine();
@@ -25,6 +30,12 @@ public class App {
             switch (choix) {
                 case 1:
                     enregistrerVente(scanner);
+                    break;
+                case 2:
+                    afficherProduitsEnRupture();
+                    break;
+                case 3:
+                    afficherProduitsLesPlusVendus(scanner);
                     break;
                 default:
                     System.out.println("Choix invalide.");
@@ -38,6 +49,92 @@ public class App {
                 e.printStackTrace();
             }
             main(args);
+        }
+    }
+
+    /**
+     * Affiche les produits dont le stock disponible est 0
+     */
+    public static void afficherProduitsEnRupture() {
+        try (MongoClient mongoClient = MongoClients.create()) {
+            MongoDatabase database = mongoClient.getDatabase("projet");
+
+            System.out.println("=== Produits en rupture de stock ===");
+
+            // j'init un bool pour savoir si j'ai trouvé au moins un produit en rupture de stock
+            boolean produitTrouve = false;
+
+            try (var cursor = database.getCollection("produits").find(new Document("Quantity", 0)).iterator()) {
+                while(cursor.hasNext()) {
+                    Document produit = cursor.next();
+                    // recupere le nom du produit et l'affiche
+                    System.out.println(produit.getString("Product ID") + " - " + produit.getString("Product Name"));
+                    produitTrouve = true;
+                }
+            }
+            if(!produitTrouve) {
+                System.out.println("Aucun produit en rupture de stock.");
+            }
+        }
+    }
+
+    /**
+     * Affiche les produits les plus vendus
+     */
+    public static void afficherProduitsLesPlusVendus(Scanner scanner) {
+        System.out.print("Combien de produits voulez-vous afficher ? ");
+        int nombreProduits;
+        
+        // guard simple
+        try {
+            nombreProduits = Integer.parseInt(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Nombre invalide.");
+            return;
+        }
+        if(nombreProduits <= 0) {
+            System.out.println("Nombre invalide.");
+            return;
+        }
+
+        try (MongoClient mongoClient = MongoClients.create()) {
+            MongoDatabase database = mongoClient.getDatabase("projet");
+
+            Map<String, String> nomsProduits = new HashMap<>();
+            try (var cursor = database.getCollection("produits").find().iterator()) {
+                while(cursor.hasNext()) {
+                    Document produit = cursor.next();
+                    nomsProduits.put(produit.getString("Product ID"), produit.getString("Product Name"));
+                }
+            }
+
+            // pour chaque produit on va recup sa somme des quantités vendues
+            var classement = database.getCollection("ventes").aggregate(List.of(
+                // je split les items dans la commande
+                    new Document("$unwind", "$items"),
+                    // je groupe par id
+                    new Document("$group", new Document("_id", "$items.Product ID")
+                    // somme des quantités de chaque commande pour chaque produit
+                            .append("quantiteVendue", new Document("$sum", "$items.Quantity"))),
+                    new Document("$sort", new Document("quantiteVendue", -1).append("_id", 1)),
+                    new Document("$limit", nombreProduits)));
+
+            System.out.println("=== Produits les plus vendus ===");
+            int rang = 1;
+            try (var cursor = classement.iterator()) {
+                while(cursor.hasNext()) {
+                    Document resultat = cursor.next();
+
+                    // affiche le produit avec son nom et sa quantité vendue
+                    String nom = nomsProduits.get(resultat.getString("_id"));
+                    System.out.println(rang + ". " + resultat.getString("_id") + " - " + nom
+                            + " : " + resultat.get("quantiteVendue") + " vendues");
+                    rang++;
+                }
+            }
+            if(rang == 1) {
+                System.out.println("Aucun produit vendu.");
+            }
         }
     }
 
