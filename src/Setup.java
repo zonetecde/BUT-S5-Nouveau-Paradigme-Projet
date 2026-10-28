@@ -118,6 +118,11 @@ public class Setup {
                             .append("Customer ID", customerId)
                             .append("Order Date", orderDate)
                             .append("City", item.getString("City"))
+                            .append("State", item.getString("State"))
+                            .append("Country", item.getString("Country"))
+                            .append("Postal Code", item.getString("Postal Code"))
+                            .append("Market", item.getString("Market"))
+                            .append("Region", item.getString("Region"))
                             .append("Ship Date", item.getString("Ship Date"))
                             .append("Ship Mode", item.getString("Ship Mode"))
                             .append("items", new ArrayList<Document>());

@@ -76,6 +76,11 @@ Ainsi, un document de la collection `ventes` ressemble à ceci :
     "Customer ID": "RH-19495",
     "Order Date": "31-07-2012",
     "City": "New York City",
+    "State": "New York",
+    "Country": "United States",
+    "Postal Code": "10024",
+    "Market": "US",
+    "Region": "East",
     "Ship Date": "31-07-2012",
     "Ship Mode": "Same Day",
     "items": [

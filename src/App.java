@@ -280,6 +280,16 @@ public class App {
             // Demande les informations de livraison
             System.out.print("Ville de livraison : ");
             String city = scanner.nextLine();
+            System.out.print("État ou province de livraison : ");
+            String state = scanner.nextLine();
+            System.out.print("Pays de livraison : ");
+            String country = scanner.nextLine();
+            System.out.print("Code postal (laisser vide si absent) : ");
+            String postalCode = scanner.nextLine();
+            System.out.print("Marché (ex: US, EU, APAC) : ");
+            String market = scanner.nextLine();
+            System.out.print("Région (ex: East, Central) : ");
+            String region = scanner.nextLine();
             System.out.print("Date d'expédition (au format jj-MM-aaaa) : ");
             String shipDate = scanner.nextLine();
             System.out.print("Mode d'expédition (Standard Class, Second Class, Same Day) : ");
@@ -290,6 +300,11 @@ public class App {
                     .append("Customer ID", id)
                     .append("Order Date", LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")))
                     .append("City", city)
+                    .append("State", state)
+                    .append("Country", country)
+                    .append("Postal Code", postalCode)
+                    .append("Market", market)
+                    .append("Region", region)
                     .append("Ship Date", shipDate)
                     .append("Ship Mode", shipMode)
                     .append("items", items);
