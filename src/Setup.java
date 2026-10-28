@@ -150,6 +150,9 @@ public class Setup {
 
             // Accélère la recherche des produits en rupture de stock
             database.getCollection("produits").createIndex(new Document("Quantity", 1));
+
+            // Prépare les ventes flash avec les dix produits les plus vendus
+            FlashSales.initialiser(database);
         }
     }
 }

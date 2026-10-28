@@ -28,6 +28,8 @@ public class App {
             System.out.println("2. Afficher les produits en rupture de stock");
             System.out.println("3. Afficher les produits les plus vendus");
             System.out.println("4. Calculer le chiffre d'affaires sur une période");
+            System.out.println("5. Réserver des produits en vente flash");
+            System.out.println("6. Valider un panier de vente flash");
             System.out.print("Votre choix : ");
             int choix = scanner.nextInt();
             scanner.nextLine();
@@ -44,6 +46,12 @@ public class App {
                     break;
                 case 4:
                     calculerChiffreAffaires(scanner);
+                    break;
+                case 5:
+                    FlashSales.reserver(scanner);
+                    break;
+                case 6:
+                    FlashSales.valider(scanner);
                     break;
                 default:
                     System.out.println("Choix invalide.");

@@ -126,3 +126,44 @@ J'ai commencé par demander combien de produits on veut afficher. Ensuite je ré
 ### 4. Calculer le chiffre d'affaires sur une période donnée
 
 J'ai commencé par demander une date de début et une date de fin au format `jj-MM-aaaa`. Je vérifie que les dates sont valides et que la date de début n'est pas après la date de fin. Ensuite je parcours les ventes et je parse leur `Order Date` pour regarder si elle est dans la période demandée, en incluant les deux dates. Pour chaque vente dans cette période, j'ajoute les `Sales` de chaque item à la somme du chiffre d'affaires. J'utilise un `BigDecimal` pour additionner les montants. Ensuite j'affiche le chiffre d'affaires total.
+
+## Partie II
+
+### 1. Créer et remplir la collection des ventes flash
+
+J'ai interprété "les 10 premiers produits vendus" comme les 10 produits les plus vendus, en faisant la somme des quantités comme pour la question 3 de la partie I. Si deux produits ont la même quantité vendue, je les trie en secondaire par `Product ID`.
+
+J'ai créé la collection `ventesFlash` avec 500 pièces pour chacun de ces produits. J'ai fait le choix de mettre une pièce par document, du coup il y a 5000 documents au départ. Comme MongoDB verrouille le document modifié, je n'ai pas mis tout le stock d'un produit et tous les paniers dans un seul document. Les utilisateurs peuvent donc réserver des pièces différentes sans modifier tous le même document. Je ne crée pas non plus de document pour chaque utilisateur inscrit pour éviter de surcharger la base de données, j'ai juste considéré que le panier existe seulement quand on réserve une pièce.
+
+Voici un exemple d'une pièce disponible :
+
+```json
+{
+    "_id": "OFF-AR-10003651:0",
+    "Product ID": "OFF-AR-10003651",
+    "Product Name": "Nom du produit dans le catalogue",
+    "Price": 10.0,
+    "Piece": 0,
+    "Etat": "disponible"
+}
+```
+
+Le script reprend les vraies valeurs depuis `produits`. J'ai mis à jour `Setup.java` pour initialiser aussi cette collection après l'import.
+
+J'ai ajouté un index unique sur `Product ID` et `Piece` ensemble pour retrouver les pièces d'un produit et éviter les doublons. J'ai aussi ajouté un index sur `Panier ID`, `Customer ID` et `Etat` ensemble pour retrouver les réservations d'un panier plus rapidement.
+
+### 2. Réserver et valider un panier
+
+J'ai ajouté le choix 5 dans le menu pour réserver des produits en vente flash. Je demande le client, je vérifie qu'il existe et j'affiche le catalogue. Ensuite je crée un `Panier ID` que l'utilisateur doit conserver pour la validation (après si c'était sur un site ça aurait été sauvegardé dans le localstorage mais comme on est en ligne de commande on doit le mémoriser).
+
+À chaque `Product ID` saisi, je réserve une pièce, donc on peut saisir plusieurs fois le même produit si on en veut plusieurs. Une ligne vide termine la saisie.
+
+Pour réserver je fais un `findOneAndUpdate` qui trouve une pièce disponible et la réserve dans la même opération. Je commence la recherche à un numéro de pièce aléatoire pour éviter que toutes les requêtes cherchent la première pièce. Je sais pas trop si c'est la meilleure façon de faire mais ça permet déjà d'éviter que ça bloque sur la même pièce.
+
+La pièce passe à l'état `reserve`, avec le `Customer ID`, le `Panier ID` et une date BSON `ExpireLe`. J'utilise l'horloge de MongoDB pour calculer les 10 minutes, sinon si on a des utilisateurs dans des timezones différentes ça aurait utilisé leur heure local donc j'ai tout unifié sur l'heure du "serveur".
+
+Si la réservation expire, la pièce peut être réservée à nouveau même si son état indique encore `reserve` car la recherche regarde aussi si `ExpireLe` est dépassée. Juste elle est pas remis automatiquement en reserve = false. Du coup elle redevient disponible sans avoir besoin d'un programme qui remet les quantités en stock.
+
+J'ai ajouté le choix 6 pour valider un panier en donnant le `Customer ID` et le `Panier ID`. Je passe les pièces encore réservées par ce client et non expirées à l'état `vendu`, puis j'enlève `ExpireLe` et j'ajoute une date BSON `ValideLe`. Quand c'est à l'état vendu la pièce ne peut plus être réservée.
+
+Chaque pièce est réservée pour 10 minutes à partir de son ajout comme on les ajoute une par une. Si certaines pièces ont expiré quand on valide le panier, seules celles encore valides sont confirmées et le programme affiche leur nombre. Je mets pas de message à l'utilisateur pour le prévenir que certaines pièces ont expiré avant de valider son panier pour lui demander confirmation mais c'est une piste d'amélioration.
