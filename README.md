@@ -95,3 +95,11 @@ Maintenant que j'ai définis la structures des collections, j'ai écrit la class
 Ce script utilise la librairie `org.json` pour parser le fichier JSON et la librairie `mongodb-driver-sync` pour interagir avec MongoDB.
 
 Note: le dernier document de `eSales.json` était un document avec que `{"Row ID": ""}` du coup j'ai fais une condition spéciale dans le script pour le skip.
+
+### Index
+
+À la fin de l'import, `Setup.java` j'ai créé les index suivants :
+
+- Un index unique sur `Product ID` dans la collection `produits` pour éviter les doublons.
+- Un index unique sur `Customer ID` dans la collection `clients` pour éviter les doublons.
+- Un index sur `Quantity` dans la collection `produits` pour rechercher les produits en rupture de stock plus rapidement.

@@ -15,6 +15,7 @@ import org.bson.Document;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.IndexOptions;
 
 public class Setup {
     /**
@@ -135,6 +136,15 @@ public class Setup {
             for (Document vente : ventesUniques.values()) {
                 database.getCollection("ventes").insertOne(vente);
             }
+
+            // Je vais ajouter ici les index pour accélérer les recherches et éviter les doublons
+
+            // déjà un index sur Product ID et Customer ID pour éviter les doublons
+            database.getCollection("produits").createIndex(new Document("Product ID", 1), new IndexOptions().unique(true));
+            database.getCollection("clients").createIndex(new Document("Customer ID", 1), new IndexOptions().unique(true));
+
+            // Accélère la recherche des produits en rupture de stock
+            database.getCollection("produits").createIndex(new Document("Quantity", 1));
         }
     }
 }
