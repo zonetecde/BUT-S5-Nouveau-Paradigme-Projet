@@ -199,6 +199,7 @@ public class App {
 
     /**
      * Prépare et insère une vente dans la base de données.
+     * Diminue le stock aussi.
      * @param scanner lecteur des saisies de l'utilisateur
      */
     public static void enregistrerVente(Scanner scanner) {
@@ -293,8 +294,37 @@ public class App {
                     .append("Ship Mode", shipMode)
                     .append("items", items);
 
-            // Ajoute la vente dans la collection
-            database.getCollection("ventes").insertOne(vente);
+            // Diminue le stock seulement si la quantité est encore disponible car comme deux personnes peuvent potentiellemen utliser l'app en même temps eh bien la première verif
+            // qui se fait pendant la saisie peut ne plus être à jour au moment de l'enregistrement de la vente. 
+            ArrayList<Document> produitsDeduits = new ArrayList<>();
+            try {
+                // Pour chaque produit de la vente, on va essayer de diminuer le stock
+                for (Document item : items) {
+                    int quantite = item.getInteger("Quantity");
+
+                    // J'utilise updateOne avec un filtre pour s'assurer que la quantité est suffisante avant de la diminuer
+                    var resultat = produits.updateOne(
+                            new Document("Product ID", item.getString("Product ID"))
+                                    .append("Quantity", new Document("$gte", quantite)),
+                            new Document("$inc", new Document("Quantity", -quantite))); // enlève la quantité qu'on prend
+
+                    if(resultat.getModifiedCount() == 0) {
+                        throw new IllegalStateException("Stock insuffisant pour le produit " + item.getString("Product ID"));
+                    }
+                    produitsDeduits.add(item);
+                }
+
+                database.getCollection("ventes").insertOne(vente); // ajoute la vente car tout les produits étaient encore dispo
+            } catch (RuntimeException e) {
+                // Revert tout ce qui a été fait si une exception est levée
+                for (Document item : produitsDeduits) {
+                    produits.updateOne(new Document("Product ID", item.getString("Product ID")),
+                            // $inc pour ajouter la quantité qu'on a enlevé
+                            new Document("$inc", new Document("Quantity", item.getInteger("Quantity"))));
+                }
+                System.out.println("Vente non enregistrée : " + e.getMessage());
+                return;
+            }
             System.out.println("Vente enregistrée : " + vente.toJson());
         }
     }
